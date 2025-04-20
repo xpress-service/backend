@@ -22,7 +22,8 @@ async function handleUpload(file) {
 
 // Middleware
 app.use(cors({
-    origin: 'http://localhost:3000',
+    // origin: 'http://localhost:3000',
+    origin: 'https://servicexpress-tau.vercel.app/',
   }));
   const storage = new Multer.memoryStorage();
 const upload = Multer({
