@@ -24,6 +24,8 @@ const serviceSchema = new mongoose.Schema({
   price: Number,
   availability: Boolean,
   imageUrl: String,
+  vendorReceives: Number, // new field
+  platformFee: Number,     // 10% of price
   serviceOwnerId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'ServiceOwner', // Assuming you have a ServiceOwner model

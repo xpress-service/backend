@@ -34,15 +34,19 @@ router.post('/', upload.single('imageUrl'), async (req, res) => {
     if (!serviceOwnerId) {
       return res.status(400).json({ message: 'Service owner ID is required.' });
     }
-
+    const numericPrice = parseFloat(price);
+    const platformFee = +(numericPrice * 0.10).toFixed(2);
+    const vendorReceives = +(numericPrice - platformFee).toFixed(2);
     // Create a new service object
     const product = new Service({
       serviceOwnerId, // Ensure the serviceOwnerId is saved
       serviceName,
       category,
       description,
-      price,
+      price:numericPrice,
       availability,
+      vendorReceives,
+      platformFee,
     });
 
     // Handle image upload if a file is provided
