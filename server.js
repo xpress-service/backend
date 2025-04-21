@@ -38,6 +38,11 @@ const upload = Multer({
   storage,
 });
 
+app.use((req, res, next) => {
+  console.log('Origin:', req.headers.origin);
+  next();
+});
+
   app.use(bodyParser.json());
   
 
