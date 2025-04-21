@@ -21,9 +21,17 @@ async function handleUpload(file) {
 }
 
 // Middleware
+const allowedOrigins = ['https://servicexpress-tau.vercel.app'];
 app.use(cors({
     // origin: 'http://localhost:3000',
-    origin: 'https://servicexpress-tau.vercel.app',
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
   }));
   const storage = new Multer.memoryStorage();
 const upload = Multer({
