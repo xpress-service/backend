@@ -141,12 +141,45 @@ router.patch('/notifications/:notificationId', async (req, res) => {
 });
 
 // Get all orders for a vendor
+// router.get('/vendor/:serviceOwnerId', async (req, res) => {
+//   try {
+//     const orders = await Order.find({ serviceOwnerId: req.params.serviceOwnerId })
+//       .populate('serviceId', 'serviceName price')  // Populate service details
+//       .populate('userId', 'firstname lastname location phone email')  // Populate user details (username, location, phone, email)
+//       .sort({ createdAt: -1 });  // Optionally sort by createdAt or any other field
+
+//     res.status(200).json(orders);
+//   } catch (error) {
+//     console.error('Error fetching vendor orders:', error);
+//     res.status(500).json({ message: 'Error fetching orders' });
+//   }
+// });
+
+// Get all orders for a vendor
 router.get('/vendor/:serviceOwnerId', async (req, res) => {
   try {
-    const orders = await Order.find({ serviceOwnerId: req.params.serviceOwnerId })
-      .populate('serviceId', 'serviceName')  // Populate service details
-      .populate('userId', 'firstname lastname location phone email')  // Populate user details (username, location, phone, email)
-      .sort({ createdAt: -1 });  // Optionally sort by createdAt or any other field
+    let orders = await Order.find({ serviceOwnerId: req.params.serviceOwnerId })
+      .populate('serviceId', 'serviceName price') // Include service name and amount
+      .populate('userId', 'firstname lastname location phone email') // Populate user basic info
+      .sort({ createdAt: -1 });
+
+    // Get all userIds from the orders
+    const userIds = orders.map(order => order.userId._id);
+
+    // Fetch all matching userProfiles
+    const userProfiles = await User.find({ userId: { $in: userIds } }).select('userId profileImage');
+
+    // Attach profileImage to each order's user
+    orders = orders.map(order => {
+      const profile = userProfiles.find(p => p.userId.toString() === order.userId._id.toString());
+      return {
+        ...order.toObject(),
+        userId: {
+          ...order.userId.toObject(),
+          profileImage: profile?.profileImage || null,
+        }
+      };
+    });
 
     res.status(200).json(orders);
   } catch (error) {
@@ -154,6 +187,7 @@ router.get('/vendor/:serviceOwnerId', async (req, res) => {
     res.status(500).json({ message: 'Error fetching orders' });
   }
 });
+
 
 
 //Update tracking
@@ -179,7 +213,30 @@ router.patch('/tracking/:trackingId', async (req, res) => {
   }
 });
 
-//Fetch order tracking by order ID
+// //Fetch order tracking by order ID
+// router.get('/tracking/order/:orderId', async (req, res) => {
+//   try {
+//     const orderId = req.params.orderId;
+
+//     if (!mongoose.Types.ObjectId.isValid(orderId)) {
+//       return res.status(400).json({ message: 'Invalid orderId format' });
+//     }
+
+//     const tracking = await Tracking.findOne({ orderId: mongoose.Types.ObjectId(orderId) })
+//       .populate('orderId')
+//       .exec();
+
+//     if (!tracking) {
+//       return res.status(404).json({ message: 'Tracking record not found' });
+//     }
+
+//     res.status(200).json(tracking);
+//   } catch (error) {
+//     console.error('Error fetching tracking:', error);
+//     res.status(500).json({ message: 'Error fetching tracking' });
+//   }
+// });
+
 router.get('/tracking/order/:orderId', async (req, res) => {
   try {
     const orderId = req.params.orderId;
@@ -189,7 +246,19 @@ router.get('/tracking/order/:orderId', async (req, res) => {
     }
 
     const tracking = await Tracking.findOne({ orderId: mongoose.Types.ObjectId(orderId) })
-      .populate('orderId')
+      .populate({
+        path: 'orderId',
+        populate: [
+          {
+            path: 'userId',
+            select: 'name profileImage location' // get specific user fields
+          },
+          {
+            path: 'services',
+            select: 'name price' // get service name and price
+          }
+        ]
+      })
       .exec();
 
     if (!tracking) {

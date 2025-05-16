@@ -33,11 +33,14 @@ const orderSchema = new mongoose.Schema({
   serviceOwnerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   status: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' },
 
-  // 🆕 Payment-related fields:
+  // Payment-related fields:
   isPaid: { type: Boolean, default: false },
   paymentMethod: { type: String, enum: ['online', 'offline'], default: null },
   platformFee: { type: Number, default: 0 },
   vendorReceives: { type: Number, default: 0 },
+
+    // Add the quantity field here:
+  quantity: { type: Number, required: true },
 
   createdAt: { type: Date, default: Date.now },
   orderDate: Date,
