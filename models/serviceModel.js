@@ -1,20 +1,3 @@
-// const mongoose = require('mongoose');
-
-// const serviceSchema = new mongoose.Schema({
-//     // vendorId: mongoose.Schema.Types.ObjectId,
-//     serviceName: String,
-//     category: String,
-//     description: String,
-//     price: Number,
-//     availability: Boolean,
-//     imageUrl: String, 
-//     serviceOwnerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Ensure required and proper ref
-//   });
-
-  
-//   module.exports = mongoose.model('Service', serviceSchema);
-  
-  
 const mongoose = require('mongoose');
 
 const serviceSchema = new mongoose.Schema({

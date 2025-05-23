@@ -1,5 +1,7 @@
 const express = require('express');
 const Order = require('../models/orderModel');
+const User = require('../models/userModel')
+const Profile = require('../models/profileModel')
 const Service = require('../models/serviceModel');
 const Notification = require('../models/notificationModel');
 const Tracking = require('../models/trackingModel');
@@ -141,12 +143,16 @@ router.patch('/notifications/:notificationId', async (req, res) => {
 });
 
 // Get all orders for a vendor
+// // Get all orders for a vendor
 // router.get('/vendor/:serviceOwnerId', async (req, res) => {
 //   try {
-//     const orders = await Order.find({ serviceOwnerId: req.params.serviceOwnerId })
-//       .populate('serviceId', 'serviceName price')  // Populate service details
-//       .populate('userId', 'firstname lastname location phone email')  // Populate user details (username, location, phone, email)
-//       .sort({ createdAt: -1 });  // Optionally sort by createdAt or any other field
+//     // Populate serviceId and userId including profileImage
+//     let orders = await Order.find({ serviceOwnerId: req.params.serviceOwnerId })
+//       .populate('serviceId', 'serviceName price') // service info
+//       .populate('userId', 'firstname lastname location phone email profileImage') // user info + profileImage
+//       .sort({ createdAt: -1 });
+
+//     // Now orders already include userId.profileImage (Cloudinary URL)
 
 //     res.status(200).json(orders);
 //   } catch (error) {
@@ -155,31 +161,34 @@ router.patch('/notifications/:notificationId', async (req, res) => {
 //   }
 // });
 
-// Get all orders for a vendor
+
 router.get('/vendor/:serviceOwnerId', async (req, res) => {
   try {
+    // Step 1: Get orders with basic user info from User model
     let orders = await Order.find({ serviceOwnerId: req.params.serviceOwnerId })
-      .populate('serviceId', 'serviceName price') // Include service name and amount
-      .populate('userId', 'firstname lastname location phone email') // Populate user basic info
+      .populate('serviceId', 'serviceName price')
+      .populate('userId', 'firstname lastname location phone email') // no profileImage here
       .sort({ createdAt: -1 });
 
-    // Get all userIds from the orders
-    const userIds = orders.map(order => order.userId._id);
+    // Step 2: Get userIds to fetch Profile documents
+   const emails = orders.map(order => order.userId.email);
 
-    // Fetch all matching userProfiles
-    const userProfiles = await User.find({ userId: { $in: userIds } }).select('userId profileImage');
+    // Step 3: Fetch profiles linked to these users
+    // Assuming Profile documents store the user's ObjectId under 'userId' or by matching email (adjust as needed)
+    const profiles = await Profile.find({ email: { $in: emails } }).select('email profileImage');
 
-    // Attach profileImage to each order's user
-    orders = orders.map(order => {
-      const profile = userProfiles.find(p => p.userId.toString() === order.userId._id.toString());
-      return {
-        ...order.toObject(),
-        userId: {
-          ...order.userId.toObject(),
-          profileImage: profile?.profileImage || null,
-        }
-      };
-    });
+    // Step 4: Map profileImage into the orders
+   orders = orders.map(order => {
+  const profile = profiles.find(p => p.email === order.userId.email);
+  return {
+    ...order.toObject(),
+    userId: {
+      ...order.userId.toObject(),
+      profileImage: profile?.profileImage || null,
+    }
+  };
+});
+
 
     res.status(200).json(orders);
   } catch (error) {
