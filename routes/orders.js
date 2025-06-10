@@ -36,7 +36,7 @@ router.post('/', async (req, res) => {
     });
 
     const savedOrder = await newOrder.save();
-
+console.log('Creating notification for:', serviceOwnerId);
     const notification = new Notification({
       serviceOwnerId,
       orderId: savedOrder._id,
@@ -44,6 +44,7 @@ router.post('/', async (req, res) => {
     });
 
     await notification.save();
+    console.log('Saved notification:', notification);
 
     // Populate user details for the placed order
     const populatedOrder = await Order.findById(savedOrder._id)
@@ -93,30 +94,48 @@ router.patch('/:orderId', async (req, res) => {
       // Create tracking entry when order is approved
       const tracking = new Tracking({
         orderId: order._id,
-        status: 'Accepted'
+        status: 'Accepted',
       });
       await tracking.save();
     }
 
-    // const notification = new Notification({
-    //   serviceOwnerId: order.serviceOwnerId,
-    //   orderId: order._id,
-    //   message: `Your order has been ${status.toLowerCase()}.`,
-    // });
-
-    // Create notification for customer
-    const notification = new Notification({
-      serviceOwnerId: order.serviceOwnerId,
-      userId: order.userId,
+    // Notify the user who placed the order
+    const userNotification = new Notification({
+      userId: order.userId, // the customer
       orderId: order._id,
-      message: 'Your order has been approved. Choose a payment method.',
+      message:
+        status === 'Approved'
+          ? 'Your order has been approved. Please choose a payment method.'
+          : 'Your order has been rejected.',
     });
-    await notification.save();
+    await userNotification.save();
 
-    res.status(200).json({ message: `Order ${status.toLowerCase()} successfully`, order });
+    res.status(200).json({
+      message: `Order ${status.toLowerCase()} successfully`,
+      order,
+    });
   } catch (error) {
     console.error('Error updating order status:', error);
-  res.status(500).json({ message: 'Error updating order status', error: error.message });
+    res.status(500).json({
+      message: 'Error updating order status',
+      error: error.message,
+    });
+  }
+});
+
+// GET /orders/notifications/user/:userId
+router.get('/notifications/user/:userId', async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const notifications = await Notification.find({ userId })
+      .populate('orderId')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json(notifications);
+  } catch (error) {
+    console.error('Error fetching user notifications:', error);
+    res.status(500).json({ message: 'Failed to fetch notifications', error: error.message });
   }
 });
 
