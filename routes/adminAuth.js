@@ -24,23 +24,36 @@ router.post('/admin-register', async (req, res) => {
 router.post('/admin-login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    
+    // Add logging for debugging
+    console.log('Admin login attempt for:', email);
+    
     const user = await Admin.findOne({ email });
 
     // Check if user exists and validate password
     if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      console.log('Invalid credentials for admin login');
+      return res.status(401).json({ message: 'Invalid admin credentials' });
     }
 
     // Generate token
     const token = generateToken(user);
+    
+    console.log('Admin login successful for:', email);
 
-    // Assuming the 'vendorId' is a field in the User model
+    // Return admin login response
     res.json({
       token,
-      userId: user._id, // Include vendorId in the response
+      userId: user._id,
+      role: user.role || 'admin',
+      message: 'Admin login successful'
     });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error('Admin login error:', error);
+    res.status(500).json({ 
+      error: 'Internal server error during admin login',
+      message: 'Something went wrong. Please try again.' 
+    });
   }
 });
 

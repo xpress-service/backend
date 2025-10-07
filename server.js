@@ -81,6 +81,8 @@ const reviewRoutes = require('./routes/reviews');
 const profileRoutes = require('./routes/profile');
 const adminAuthRoutes = require('./routes/adminAuth');
 const adminProfileRoutes = require('./routes/adminProfile');
+const adminDashboardRoutes = require('./routes/adminDashboard');
+const vendorApprovalRoutes = require('./routes/vendorApproval');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/services', serviceRoutes);
@@ -89,6 +91,8 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/adminAuth', adminAuthRoutes);
 app.use('/api/adminProfile', adminProfileRoutes);
+app.use('/api/admin', adminDashboardRoutes);
+app.use('/api/admin/vendors', vendorApprovalRoutes);
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 

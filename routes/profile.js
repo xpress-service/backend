@@ -63,4 +63,38 @@ router.put('/', authenticateToken, upload.single('profileImage'), async (req, re
     }
 });
 
+// Update Notification Preferences
+router.patch('/notifications', authenticateToken, async (req, res) => {
+    try {
+        const { emailNotifications, pushNotifications, orderUpdates, promotionalEmails } = req.body;
+        
+        const updates = {
+            notificationSettings: {
+                emailNotifications: emailNotifications !== undefined ? emailNotifications : true,
+                pushNotifications: pushNotifications !== undefined ? pushNotifications : true,
+                orderUpdates: orderUpdates !== undefined ? orderUpdates : true,
+                promotionalEmails: promotionalEmails !== undefined ? promotionalEmails : false
+            }
+        };
+
+        const updatedUser = await User.findByIdAndUpdate(
+            req.user.userId, 
+            updates, 
+            { new: true }
+        );
+
+        if (!updatedUser) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.json({ 
+            message: 'Notification preferences updated successfully',
+            notificationSettings: updatedUser.notificationSettings 
+        });
+    } catch (error) {
+        console.error('Error updating notification preferences:', error);
+        res.status(500).json({ error: 'Internal server error', details: error.message });
+    }
+});
+
 module.exports = router;
