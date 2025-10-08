@@ -12,7 +12,7 @@ const createTransporter = () => {
     throw new Error('Email configuration missing: EMAIL_USER and EMAIL_PASSWORD are required');
   }
   
-  return nodemailer.createTransporter({
+  return nodemailer.createTransport({
     service: 'gmail',
     auth: {
       user: process.env.EMAIL_USER,
