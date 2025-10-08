@@ -44,7 +44,7 @@ const sendVerificationEmailSendGrid = async (email, verificationToken, firstName
     const msg = {
       to: email,
       from: {
-        email: process.env.EMAIL_USER || 'noreply@servicexpress.com',
+        email: process.env.EMAIL_USER || 'servixpress247@gmail.com',
         name: 'ServiceXpress'
       },
       subject: 'Verify Your Email - ServiceXpress',
@@ -70,6 +70,15 @@ const sendVerificationEmailSendGrid = async (email, verificationToken, firstName
     
   } catch (error) {
     console.error('❌ SendGrid error:', error.message);
+    console.error('SendGrid error details:', error.response ? error.response.body : 'No response details');
+    
+    if (error.code === 403 || error.message.includes('Forbidden')) {
+      console.error('🔐 SendGrid Forbidden - Check:');
+      console.error('1. Sender email verification (Settings → Sender Authentication)');
+      console.error('2. API key permissions (Settings → API Keys)');
+      console.error('3. Account verification status');
+    }
+    
     return false;
   }
 };
