@@ -366,6 +366,7 @@ router.get('/check-env', (req, res) => {
       FRONTEND_URL_SET: !!process.env.FRONTEND_URL,
       MONGO_URI_SET: !!process.env.MONGO_URI,
       JWT_SECRET_SET: !!process.env.JWT_SECRET,
+      SENDGRID_API_KEY_SET: !!process.env.SENDGRID_API_KEY,
       // Only show actual values for non-sensitive data
       FRONTEND_URL: process.env.FRONTEND_URL,
       EMAIL_USER: process.env.EMAIL_USER
