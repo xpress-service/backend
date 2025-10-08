@@ -25,14 +25,33 @@ router.post('/admin-login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
-    // Add logging for debugging
-    console.log('Admin login attempt for:', email);
+    // Enhanced logging for debugging
+    console.log('=== ADMIN LOGIN ATTEMPT ===');
+    console.log('Email:', email);
+    console.log('Password provided:', !!password);
+    console.log('Request origin:', req.headers.origin);
+    console.log('Request headers:', JSON.stringify(req.headers, null, 2));
+    
+    // Validate input
+    if (!email || !password) {
+      console.log('Missing email or password');
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
     
     const user = await Admin.findOne({ email });
+    console.log('User found:', !!user);
 
-    // Check if user exists and validate password
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      console.log('Invalid credentials for admin login');
+    if (!user) {
+      console.log('No admin user found with email:', email);
+      return res.status(401).json({ message: 'Invalid admin credentials' });
+    }
+
+    // Test password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    console.log('Password valid:', isPasswordValid);
+
+    if (!isPasswordValid) {
+      console.log('Invalid password for admin:', email);
       return res.status(401).json({ message: 'Invalid admin credentials' });
     }
 
@@ -40,6 +59,7 @@ router.post('/admin-login', async (req, res) => {
     const token = generateToken(user);
     
     console.log('Admin login successful for:', email);
+    console.log('Generated token:', !!token);
 
     // Return admin login response
     res.json({
