@@ -305,18 +305,43 @@ router.patch('/change-password', auth, async (req, res) => {
 router.get('/test-email', async (req, res) => {
   try {
     console.log('📧 Email configuration test requested');
+    
+    // Check environment variables first
+    const envCheck = {
+      EMAIL_USER: !!process.env.EMAIL_USER,
+      EMAIL_PASSWORD: !!process.env.EMAIL_PASSWORD,
+      FRONTEND_URL: !!process.env.FRONTEND_URL,
+      NODE_ENV: process.env.NODE_ENV,
+      // Show actual values for debugging (be careful in production)
+      EMAIL_USER_VALUE: process.env.EMAIL_USER || 'NOT SET',
+      FRONTEND_URL_VALUE: process.env.FRONTEND_URL || 'NOT SET'
+    };
+    
+    console.log('Environment variables check:', envCheck);
+    
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+      return res.status(500).json({
+        message: 'Email environment variables missing',
+        status: 'error',
+        envCheck,
+        error: 'EMAIL_USER or EMAIL_PASSWORD not configured'
+      });
+    }
+    
     const result = await testEmailConnection();
     
     if (result.success) {
       res.json({ 
         message: 'Email service is working correctly',
         status: 'success',
+        envCheck,
         details: result
       });
     } else {
       res.status(500).json({ 
         message: 'Email service configuration issue',
         status: 'error',
+        envCheck,
         error: result.error,
         code: result.code
       });
@@ -325,7 +350,36 @@ router.get('/test-email', async (req, res) => {
     console.error('❌ Email test endpoint error:', error);
     res.status(500).json({ 
       message: 'Email test failed',
-      error: error.message 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
+// Environment variables check endpoint
+router.get('/check-env', (req, res) => {
+  try {
+    const envVars = {
+      NODE_ENV: process.env.NODE_ENV,
+      EMAIL_USER_SET: !!process.env.EMAIL_USER,
+      EMAIL_PASSWORD_SET: !!process.env.EMAIL_PASSWORD,
+      FRONTEND_URL_SET: !!process.env.FRONTEND_URL,
+      MONGO_URI_SET: !!process.env.MONGO_URI,
+      JWT_SECRET_SET: !!process.env.JWT_SECRET,
+      // Only show actual values for non-sensitive data
+      FRONTEND_URL: process.env.FRONTEND_URL,
+      EMAIL_USER: process.env.EMAIL_USER
+    };
+    
+    res.json({
+      message: 'Environment variables check',
+      timestamp: new Date().toISOString(),
+      environment: envVars
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: 'Failed to check environment variables',
+      error: error.message
     });
   }
 });
