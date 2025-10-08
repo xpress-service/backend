@@ -2,23 +2,47 @@
 require('dotenv').config();
 
 const createTransporter = () => {
-  return nodemailer.createTransport({
+  // Log environment variables for debugging (hide sensitive parts)
+  console.log('Email configuration check:');
+  console.log('EMAIL_USER:', process.env.EMAIL_USER ? 'Set' : 'Missing');
+  console.log('EMAIL_PASSWORD:', process.env.EMAIL_PASSWORD ? 'Set' : 'Missing');
+  console.log('FRONTEND_URL:', process.env.FRONTEND_URL || 'Missing');
+  
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+    throw new Error('Email configuration missing: EMAIL_USER and EMAIL_PASSWORD are required');
+  }
+  
+  return nodemailer.createTransporter({
     service: 'gmail',
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASSWORD
+    },
+    secure: true,
+    tls: {
+      rejectUnauthorized: false
     }
   });
 };
 
-
 const sendVerificationEmail = async (email, verificationToken, firstName, role = 'customer') => {
   try {
+    console.log(`🔄 Attempting to send verification email to: ${email}`);
+    console.log(`🔄 Using frontend URL: ${process.env.FRONTEND_URL}`);
+    
     const transporter = createTransporter();
-    const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
+    
+    // Test the connection first
+    await transporter.verify();
+    console.log('✅ SMTP connection verified successfully');
+    
+    const verificationUrl = `${process.env.FRONTEND_URL || 'https://servicexpress-tau.vercel.app'}/verify-email?token=${verificationToken}`;
     
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: {
+        name: 'ServiceXpress',
+        address: process.env.EMAIL_USER
+      },
       to: email,
       subject: 'Verify Your Email - ServiceXpress',
       html: `
@@ -30,18 +54,39 @@ const sendVerificationEmail = async (email, verificationToken, firstName, role =
             <h2>Welcome ${firstName}!</h2>
             <p>Please verify your email by clicking the link below:</p>
             <p><a href="${verificationUrl}" style="background-color: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px;">Verify Email</a></p>
+            <p>Or copy and paste this link: <br><small>${verificationUrl}</small></p>
             <p><small>If you didn't create this account, please ignore this email.</small></p>
           </div>
         </div>
       `
     };
     
-    await transporter.sendMail(mailOptions);
-    console.log('✅ Verification email sent to:', email);
+    console.log('📧 Sending email with options:', {
+      from: mailOptions.from,
+      to: mailOptions.to,
+      subject: mailOptions.subject
+    });
+    
+    const result = await transporter.sendMail(mailOptions);
+    console.log('✅ Verification email sent successfully:', result.messageId);
     return true;
     
   } catch (error) {
-    console.error('❌ Error sending verification email:', error.message);
+    console.error('❌ Detailed error sending verification email:');
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error code:', error.code);
+    console.error('Error stack:', error.stack);
+    
+    // More specific error messages
+    if (error.code === 'EAUTH') {
+      console.error('🔐 Authentication failed - check EMAIL_USER and EMAIL_PASSWORD');
+    } else if (error.code === 'ENOTFOUND') {
+      console.error('🌐 Network error - check internet connection');
+    } else if (error.code === 'ETIMEDOUT') {
+      console.error('⏰ Timeout error - Gmail servers might be slow');
+    }
+    
     return false;
   }
 };
@@ -81,7 +126,22 @@ const sendVendorApprovalEmail = async (email, firstName, isApproved, rejectionRe
   }
 };
 
+// Test email function for debugging
+const testEmailConnection = async () => {
+  try {
+    console.log('🧪 Testing email configuration...');
+    const transporter = createTransporter();
+    await transporter.verify();
+    console.log('✅ Email connection test successful');
+    return { success: true, message: 'Email connection verified' };
+  } catch (error) {
+    console.error('❌ Email connection test failed:', error.message);
+    return { success: false, error: error.message, code: error.code };
+  }
+};
+
 module.exports = {
   sendVerificationEmail,
-  sendVendorApprovalEmail
+  sendVendorApprovalEmail,
+  testEmailConnection
 };

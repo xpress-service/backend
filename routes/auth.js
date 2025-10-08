@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 const User = require('../models/userModel');
 const generateToken = require('../utils/generateToken');
 const auth = require('../middlewares/auth');
-const { sendVerificationEmail } = require('../utils/emailService');
+const { sendVerificationEmail, testEmailConnection } = require('../utils/emailService');
 const { validatePassword, validateEmail, validateNames } = require('../middlewares/validation');
 
 const router = express.Router();
@@ -245,15 +245,21 @@ router.post('/resend-verification', async (req, res) => {
     await user.save();
     
     // Send verification email
+    console.log(`🔄 Processing resend verification for user: ${email}`);
     const emailSent = await sendVerificationEmail(email, verificationToken, user.firstname, user.role);
     
     if (emailSent) {
+      console.log(`✅ Verification email sent successfully to: ${email}`);
       res.json({ 
         message: 'Verification email sent successfully!',
         verificationToken: process.env.NODE_ENV === 'development' ? verificationToken : undefined
       });
     } else {
-      res.status(500).json({ message: 'Failed to send verification email. Please try again.' });
+      console.error(`❌ Failed to send verification email to: ${email}`);
+      res.status(500).json({ 
+        message: 'Failed to send verification email. Please check server logs for details.',
+        error: 'Email service unavailable'
+      });
     }
   } catch (error) {
     console.error('Resend verification error:', error);
@@ -292,6 +298,35 @@ router.patch('/change-password', auth, async (req, res) => {
   } catch (error) {
     console.error('Error changing password:', error);
     res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Test email configuration endpoint (for debugging in production)
+router.get('/test-email', async (req, res) => {
+  try {
+    console.log('📧 Email configuration test requested');
+    const result = await testEmailConnection();
+    
+    if (result.success) {
+      res.json({ 
+        message: 'Email service is working correctly',
+        status: 'success',
+        details: result
+      });
+    } else {
+      res.status(500).json({ 
+        message: 'Email service configuration issue',
+        status: 'error',
+        error: result.error,
+        code: result.code
+      });
+    }
+  } catch (error) {
+    console.error('❌ Email test endpoint error:', error);
+    res.status(500).json({ 
+      message: 'Email test failed',
+      error: error.message 
+    });
   }
 });
 
