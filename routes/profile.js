@@ -9,13 +9,25 @@ const router = express.Router();
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// Helper function for Cloudinary upload
+// Helper function for Cloudinary upload with timeout
 const uploadImageToCloudinary = (fileBuffer) => {
     return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+            reject(new Error('Cloudinary upload timeout - check internet connection'));
+        }, 10000); // 10 second timeout
+
         const stream = cloudinary.uploader.upload_stream(
-            { resource_type: "image", folder: "learning" }, // Organize images in a specific folder
+            { 
+                resource_type: "image", 
+                folder: "learning",
+                timeout: 10000 // Cloudinary timeout
+            },
             (error, result) => {
-                if (error) return reject(error);
+                clearTimeout(timeout);
+                if (error) {
+                    console.error('Cloudinary upload error:', error);
+                    return reject(new Error(`Cloudinary error: ${error.message}`));
+                }
                 resolve(result);
             }
         );
@@ -48,8 +60,16 @@ router.put('/', authenticateToken, upload.single('profileImage'), async (req, re
 
         // Handle image upload if file is provided
         if (req.file) {
-            const result = await uploadImageToCloudinary(req.file.buffer);
-            updates.profileImage = result.secure_url; // Store the image URL
+            try {
+                const result = await uploadImageToCloudinary(req.file.buffer);
+                updates.profileImage = result.secure_url; // Store the image URL
+            } catch (cloudinaryError) {
+                console.warn('Cloudinary upload failed:', cloudinaryError.message);
+                // Continue without image upload if Cloudinary fails
+                // You can choose to either skip the image or return an error
+                // For now, we'll skip the image and continue with profile update
+                delete updates.profileImage;
+            }
         }
 
         // Update user in the database

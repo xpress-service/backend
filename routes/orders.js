@@ -223,25 +223,6 @@ router.patch('/notifications/:notificationId', async (req, res) => {
 });
 
 // Get all orders for a vendor
-// // Get all orders for a vendor
-// router.get('/vendor/:serviceOwnerId', async (req, res) => {
-//   try {
-//     // Populate serviceId and userId including profileImage
-//     let orders = await Order.find({ serviceOwnerId: req.params.serviceOwnerId })
-//       .populate('serviceId', 'serviceName price') // service info
-//       .populate('userId', 'firstname lastname location phone email profileImage') // user info + profileImage
-//       .sort({ createdAt: -1 });
-
-//     // Now orders already include userId.profileImage (Cloudinary URL)
-
-//     res.status(200).json(orders);
-//   } catch (error) {
-//     console.error('Error fetching vendor orders:', error);
-//     res.status(500).json({ message: 'Error fetching orders' });
-//   }
-// });
-
-
 router.get('/vendor/:serviceOwnerId', async (req, res) => {
   try {
     // Step 1: Get orders with basic user info from User model
@@ -414,30 +395,6 @@ router.patch('/tracking/:trackingId', async (req, res) => {
     res.status(500).json({ message: 'Error updating tracking' });
   }
 });
-
-// //Fetch order tracking by order ID
-// router.get('/tracking/order/:orderId', async (req, res) => {
-//   try {
-//     const orderId = req.params.orderId;
-
-//     if (!mongoose.Types.ObjectId.isValid(orderId)) {
-//       return res.status(400).json({ message: 'Invalid orderId format' });
-//     }
-
-//     const tracking = await Tracking.findOne({ orderId: mongoose.Types.ObjectId(orderId) })
-//       .populate('orderId')
-//       .exec();
-
-//     if (!tracking) {
-//       return res.status(404).json({ message: 'Tracking record not found' });
-//     }
-
-//     res.status(200).json(tracking);
-//   } catch (error) {
-//     console.error('Error fetching tracking:', error);
-//     res.status(500).json({ message: 'Error fetching tracking' });
-//   }
-// });
 
 router.get('/tracking/order/:orderId', async (req, res) => {
   try {
