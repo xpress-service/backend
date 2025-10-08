@@ -1,5 +1,11 @@
 ﻿const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail');
 require('dotenv').config();
+
+// Set up SendGrid as backup
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+}
 
 const createTransporter = () => {
   // Log environment variables for debugging (hide sensitive parts)
@@ -19,22 +25,67 @@ const createTransporter = () => {
       pass: process.env.EMAIL_PASSWORD
     },
     secure: true,
+    connectionTimeout: 10000, // 10 seconds timeout
+    greetingTimeout: 5000,    // 5 seconds greeting timeout
+    socketTimeout: 10000,     // 10 seconds socket timeout
     tls: {
       rejectUnauthorized: false
     }
   });
 };
 
-const sendVerificationEmail = async (email, verificationToken, firstName, role = 'customer') => {
+// SendGrid fallback function
+const sendVerificationEmailSendGrid = async (email, verificationToken, firstName, role = 'customer') => {
   try {
-    console.log(`🔄 Attempting to send verification email to: ${email}`);
-    console.log(`🔄 Using frontend URL: ${process.env.FRONTEND_URL}`);
+    console.log(`� Attempting SendGrid fallback for: ${email}`);
     
+    const verificationUrl = `${process.env.FRONTEND_URL || 'https://servicexpress-tau.vercel.app'}/verify-email?token=${verificationToken}`;
+    
+    const msg = {
+      to: email,
+      from: {
+        email: process.env.EMAIL_USER || 'noreply@servicexpress.com',
+        name: 'ServiceXpress'
+      },
+      subject: 'Verify Your Email - ServiceXpress',
+      html: `
+        <div style="max-width: 600px; margin: 0 auto; font-family: Arial, sans-serif;">
+          <div style="background-color: #667eea; padding: 20px; text-align: center;">
+            <h1 style="color: white; margin: 0;">ServiceXpress</h1>
+          </div>
+          <div style="padding: 30px; background-color: #f9f9f9;">
+            <h2>Welcome ${firstName}!</h2>
+            <p>Please verify your email by clicking the link below:</p>
+            <p><a href="${verificationUrl}" style="background-color: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px;">Verify Email</a></p>
+            <p>Or copy and paste this link: <br><small>${verificationUrl}</small></p>
+            <p><small>If you didn't create this account, please ignore this email.</small></p>
+          </div>
+        </div>
+      `
+    };
+    
+    await sgMail.send(msg);
+    console.log('✅ Verification email sent via SendGrid');
+    return true;
+    
+  } catch (error) {
+    console.error('❌ SendGrid error:', error.message);
+    return false;
+  }
+};
+
+const sendVerificationEmail = async (email, verificationToken, firstName, role = 'customer') => {
+  console.log(`�🔄 Attempting to send verification email to: ${email}`);
+  console.log(`🔄 Using frontend URL: ${process.env.FRONTEND_URL}`);
+  
+  // Try Gmail first
+  try {
     const transporter = createTransporter();
     
-    // Test the connection first
+    // Test the connection first with shorter timeout
+    console.log('🔄 Testing Gmail SMTP connection...');
     await transporter.verify();
-    console.log('✅ SMTP connection verified successfully');
+    console.log('✅ Gmail SMTP connection verified successfully');
     
     const verificationUrl = `${process.env.FRONTEND_URL || 'https://servicexpress-tau.vercel.app'}/verify-email?token=${verificationToken}`;
     
@@ -61,33 +112,23 @@ const sendVerificationEmail = async (email, verificationToken, firstName, role =
       `
     };
     
-    console.log('📧 Sending email with options:', {
-      from: mailOptions.from,
-      to: mailOptions.to,
-      subject: mailOptions.subject
-    });
-    
+    console.log('📧 Sending email via Gmail SMTP...');
     const result = await transporter.sendMail(mailOptions);
-    console.log('✅ Verification email sent successfully:', result.messageId);
+    console.log('✅ Verification email sent successfully via Gmail:', result.messageId);
     return true;
     
-  } catch (error) {
-    console.error('❌ Detailed error sending verification email:');
-    console.error('Error name:', error.name);
-    console.error('Error message:', error.message);
-    console.error('Error code:', error.code);
-    console.error('Error stack:', error.stack);
+  } catch (gmailError) {
+    console.error('❌ Gmail failed, trying SendGrid fallback...');
+    console.error('Gmail error:', gmailError.code, gmailError.message);
     
-    // More specific error messages
-    if (error.code === 'EAUTH') {
-      console.error('🔐 Authentication failed - check EMAIL_USER and EMAIL_PASSWORD');
-    } else if (error.code === 'ENOTFOUND') {
-      console.error('🌐 Network error - check internet connection');
-    } else if (error.code === 'ETIMEDOUT') {
-      console.error('⏰ Timeout error - Gmail servers might be slow');
+    // Fallback to SendGrid if Gmail fails
+    if (process.env.SENDGRID_API_KEY) {
+      console.log('� Switching to SendGrid...');
+      return await sendVerificationEmailSendGrid(email, verificationToken, firstName, role);
+    } else {
+      console.error('❌ No SendGrid API key configured, email sending failed');
+      return false;
     }
-    
-    return false;
   }
 };
 
@@ -142,6 +183,7 @@ const testEmailConnection = async () => {
 
 module.exports = {
   sendVerificationEmail,
+  sendVerificationEmailSendGrid,
   sendVendorApprovalEmail,
   testEmailConnection
 };
